@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <!-- Asegura que el layout sea responsive en móviles -->
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Inicio de sesión – ESP32 UTS</title>
+
+  <!-- Carga de fuente Inter (ligera/semibold/bold) para el UI -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <!-- Tu hoja de estilos global (opcional) -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <style>
+    /* ================== Variables de color y tonos base ================== */
+    :root{
+      --verde-uts: #27ae60;
+      --verde-osc: #1f8c4f;
+      --verde-neon: #2ecc71;
+      --fondo-1: #0f1f16;
+      --fondo-2: #0b2a19;
+      --card-bg: rgba(255,255,255,.08);
+      --card-bd: rgba(255,255,255,.22);
+      --txt: #eaf6ee;
+      --muted: #cfe7d7;
+      --error: #ffb3b3;
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+
+    /* ================== Fondo + tipografía global ================== */
+    body{
+      margin:0;
+      font-family: "Inter", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--txt);
+      /* Fondo con gradientes para un look “ambiental” */
+      background:
+        radial-gradient(1200px 800px at 15% 10%, #184c31 0%, transparent 60%),
+        radial-gradient(900px 700px at 85% 85%, #0f3f28 0%, transparent 60%),
+        linear-gradient(135deg, var(--fondo-1), var(--fondo-2));
+      display:grid;            /* Centra el card en pantalla */
+      place-items:center;
+      min-height:100vh;
+    }
+
+    /* ================== “Blobs” decorativos con animación sutil ================== */
+    .blobs::before, .blobs::after{
+      content:"";
+      position:fixed; inset:auto;
+      width:60vmin; height:60vmin;
+      filter: blur(60px);
+      background: radial-gradient(circle at 30% 30%, var(--verde-neon), transparent 60%);
+      opacity:.25; z-index:0; pointer-events:none;
+      animation: float 14s ease-in-out infinite alternate;
+    }
+    .blobs::after{
+      width:55vmin; height:55vmin; right:-10vmin; top:-10vmin;
+      background: radial-gradient(circle at 70% 70%, #2bd07f, transparent 60%);
+      animation-duration: 18s;
+    }
+    @keyframes float{ to{ transform: translate3d(2vmin,-3vmin,0) scale(1.05); } }
+
+    /* ================== Tarjeta principal del login ================== */
+    .login-wrap{
+      position:relative; z-index:2;                /* sobre los blobs */
+      width: min(420px, 92vw);                      /* responsive */
+      background: var(--card-bg); backdrop-filter: blur(12px); /* efecto glass */
+      border:1px solid var(--card-bd); border-radius: 18px;
+      box-shadow: 0 10px 45px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
+      padding: 28px 26px 18px;
+    }
+
+    /* ================== Encabezado (icono UTS + título) ================== */
+    .brand{ display:flex; align-items:center; gap:14px; margin-bottom:14px; }
+    .brand .badge{
+      width:42px; height:42px; border-radius:12px;
+      background: linear-gradient(145deg, var(--verde-uts), var(--verde-osc));
+      display:grid; place-items:center;
+      color:#fff; font-weight:800; letter-spacing:.5px;
+      box-shadow: 0 6px 18px rgba(39,174,96,.35);
+    }
+    h1{ margin:0; font-size:1.15rem; font-weight:800; line-height:1.1; }
+    .sub{ margin:.15rem 0 1rem; color: var(--muted); font-size:.95rem; }
+
+    /* ================== Formulario y campos ================== */
+    form{ display:flex; flex-direction:column; gap:12px; margin-top:4px; }
+
+    .field{
+      position:relative; display:flex; align-items:center;
+      background: rgba(255,255,255,.06);          /* leve contraste sobre el glass */
+      border:1px solid rgba(255,255,255,.12);
+      border-radius:12px; padding: 10px 12px;
+    }
+    .field:focus-within{
+      /* resalta cuando el input interno recibe foco */
+      border-color: rgba(46, 204, 113, .6);
+      box-shadow: 0 0 0 3px rgba(46,204,113,.12);
+    }
+    .icon{ width:22px; height:22px; display:grid; place-items:center; opacity:.8; margin-right:8px; }
+
+    .field input{
+      flex:1; background:transparent; border:0; outline:0; color:var(--txt);
+      font-size: 0.98rem; letter-spacing:.2px;
+    }
+
+    /* Botón mostrar/ocultar contraseña */
+    .eye{
+      border:0; outline:0; background:transparent; color:var(--muted);
+      cursor:pointer; padding:4px; border-radius:8px;
+    }
+    .eye:hover{ color:#fff; }
+
+    /* Botón principal “Ingresar” */
+    .btn-cta{
+      margin-top:2px; appearance:none; border:0; cursor:pointer;
+      background: linear-gradient(135deg, var(--verde-uts), var(--verde-neon));
+      color:#05210f; font-weight:800; letter-spacing:.3px; font-size:1rem;
+      padding:12px 14px; border-radius:12px;
+      box-shadow: 0 10px 24px rgba(46,204,113,.28), inset 0 1px 0 rgba(255,255,255,.25);
+      transition: transform .06s ease, box-shadow .2s ease;
+    }
+    .btn-cta:hover{ box-shadow: 0 12px 28px rgba(46,204,113,.36); }
+    .btn-cta:active{ transform: translateY(1px) scale(.997); }
+
+    /* Mensaje de error/estado bajo el botón */
+    .msg{ min-height:1.15em; margin:.25rem 2px 0; font-size:.92rem; color: var(--error); }
+
+    /* Texto institucional al pie del card */
+    .foot{ margin-top:14px; text-align:center; color: var(--muted); font-size:.85rem; }
+
+    /* ================== Fila de logos dentro del card ================== */
+    /* Más grandes y juntos, bajo el texto institucional */
+    .logos-row{
+      display:flex; align-items:center; justify-content:center; /* centrados */
+      gap:10px;                                                 /* poca separación */
+      margin-top:12px; padding-top:10px;
+      border-top: 1px solid rgba(255,255,255,.08);              /* división suave */
+    }
+    .logos-row img{
+      height:70px;               /* ~60% más grande que el tamaño previo */
+      width:auto; object-fit:contain;
+      filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));
+    }
+    @media (max-width:480px){
+      .logos-row img{ height:54px; }  /* tamaño reducido en móviles */
+    }
+  </style>
+</head>
+<body>
+  <!-- Capa visual para blobs animados (decoración) -->
+  <div class="blobs" aria-hidden="true"></div>
+
+  <!-- ================== Tarjeta del login ================== -->
+  <div class="login-wrap">
+    <!-- Encabezado con insignia “UTS” y textos -->
+    <div class="brand">
+      <div class="badge">UTS</div>
+      <div>
+        <h1>Panel variables ambientales – UTS</h1>
+        <div class="sub">Sistema IoT para monitoreo ambiental</div>
+      </div>
+    </div>
+
+    <!-- Formulario de acceso (no envía por submit tradicional; usa JS) -->
+    <form id="formLogin" autocomplete="on" onsubmit="return false;">
+      <!-- Campo Email con icono SVG -->
+      <div class="field">
+        <span class="icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 6h16v12H4z" stroke="currentColor" stroke-width="1.7" />
+            <path d="M4 7l8 6 8-6" stroke="currentColor" stroke-width="1.7" fill="none"/>
+          </svg>
+        </span>
+        <input id="email" type="email" placeholder="Correo institucional" autocomplete="username" required>
+      </div>
+
+      <!-- Campo Contraseña con botón para mostrar/ocultar -->
+      <div class="field">
+        <span class="icon" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <rect x="4" y="10" width="16" height="10" rx="2" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M8 10V7a4 4 0 1 1 8 0v3" stroke="currentColor" stroke-width="1.7"/>
+          </svg>
+        </span>
+        <input id="password" type="password" placeholder="Contraseña" autocomplete="current-password" required>
+        <button type="button" class="eye" id="togglePwd" aria-label="Mostrar u ocultar contraseña" title="Mostrar/Ocultar">
+          <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Z" stroke="currentColor" stroke-width="1.7"/>
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.7"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Botón principal (el handler real está en auth.js via authInit) -->
+      <button id="btnLogin" class="btn-cta">Ingresar</button>
+
+      <!-- Mensajes de error/estado de autenticación -->
+      <p id="msg" class="msg"></p>
+    </form>
+
+    <!-- Texto institucional al pie del card -->
+    <div class="foot">Programa de Ingeniería de Telecomunicaciones – UTS</div>
+
+    <!-- Logos institucionales DENTRO de la tarjeta -->
+    <div class="logos-row">
+      <img src="img/logo-izq.png" alt="Logo UTS">
+      <img src="img/logo-der.png" alt="Logo SISTEL">
+    </div>
+  </div>
+
+  <!-- ================== Firebase (compat v9) ================== -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+
+  <!-- Tu lógica de autenticación (init, onAuth, login, etc.) -->
+  <script src="auth.js"></script>
+
+  <script>
+    /* ====== UX: mostrar/ocultar contraseña ====== */
+    const pwd = document.getElementById('password');
+    const toggle = document.getElementById('togglePwd');
+    const eyeIcon = document.getElementById('eyeIcon');
+    toggle.addEventListener('click', ()=>{
+      const vis = pwd.type === 'password' ? 'text' : 'password';
+      pwd.type = vis;
+      // Pequeña pista visual en el icono (opacidad)
+      eyeIcon.style.opacity = (vis === 'text') ? 1 : 0.85;
+    });
+
+    /* ====== Inicializa el flujo de login de auth.js ======
+       - authInit({ loginPage: true }) monta los handlers del botón,
+         escucha onAuthStateChanged y redirige al dashboard si ya hay sesión. */
+    authInit({ loginPage: true });
+  </script>
+</body>
+</html>

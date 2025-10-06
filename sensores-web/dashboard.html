@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Panel – Calidad de aire</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Hoja de estilos global (tuya) -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- Fuente Inter -->
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+  <style>
+    /* ================== Variables y estilos base del tema ================== */
+    :root{
+      --apple:#7ed957; --apple-2:#45c264; --apple-3:#aef38e;
+      --bg1:#0c1f14; --bg2:#0e2a19; --txt:#e8f7ec; --muted:#cfead7; --linea:#1f3a2a;
+      --rojo:#e74c3c; --azul:#3498db; --morado:#8e44ad; --verde:#27ae60;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family:"Inter",system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--txt);
+      /* Fondo con gradientes (look UTS) */
+      background:
+        radial-gradient(1200px 800px at 10% 10%, rgba(126,217,87,.12), transparent 60%),
+        radial-gradient(900px 700px at 90% 90%, rgba(69,194,100,.15), transparent 60%),
+        linear-gradient(135deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+    }
+
+    /* ================== Header con logos, título y usuario ================== */
+    header{
+      position:sticky; top:0; z-index:10; display:flex; align-items:center; justify-content:space-between;
+      gap:10px; padding:10px 16px; backdrop-filter: blur(8px);
+      background: linear-gradient( to right, rgba(126,217,87,.18), rgba(126,217,87,.06), transparent );
+      border-bottom:1px solid rgba(255,255,255,.08);
+    }
+    header img{height:54px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25));}
+    .user{margin:0 10px; color:var(--muted); font-size:.92rem}
+    .btn-logout{
+      background: linear-gradient(135deg, #ff7a7a, #ff5252);
+      border:none; color:#fff; padding:.38rem .9rem; border-radius:10px; cursor:pointer; font-weight:700;
+      box-shadow: 0 8px 20px rgba(255,82,82,.25);
+    }
+    .btn-logout:hover{ filter:brightness(1.05); }
+
+    /* ================== Selector de dispositivos (boards) ================== */
+    .selector-boards{
+      display:flex; gap:.5rem; flex-wrap:wrap; padding:10px 16px; margin:8px auto 0; max-width:1100px;
+    }
+    .selector-boards button{
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color:var(--txt); padding:.4rem .9rem; border-radius:999px; cursor:pointer; transition:.2s; font-weight:600;
+    }
+    .selector-boards button:hover{ background: rgba(126,217,87,.16); border-color: rgba(126,217,87,.35); }
+    .selector-boards .sel{ background: linear-gradient(135deg, var(--apple), var(--apple-2)); color:#0b1a11; }
+
+    /* ================== Tabs (pestañas) ================== */
+    .tabs{
+      display:flex; gap:8px; padding:10px 16px; margin:0 auto; max-width:1100px; position:sticky; top:68px; z-index:9;
+    }
+    .tablink{
+      border:1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color:var(--txt);
+      padding:.55rem 1rem; border-radius:12px; cursor:pointer; font-weight:700; transition:.2s; letter-spacing:.2px;
+    }
+    .tablink:hover{ background: rgba(126,217,87,.10); border-color: rgba(126,217,87,.35); }
+    .tablink.active{
+      background: linear-gradient(135deg, var(--apple), var(--apple-2));
+      color:#06140c; border-color: transparent; box-shadow: 0 10px 24px rgba(126,217,87,.25);
+    }
+    .oculto{ display:none!important; } /* útil para ocultar tab de Config a no-admin */
+
+    /* ================== Layout de contenido y tarjetas ================== */
+    .contenedor{ max-width:1100px; margin:0 auto; padding:18px 16px 28px; }
+    .tabcontent{ display:none; } .tabcontent.active{ display:block; }
+
+    .card{
+      background: rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.16);
+      border-radius:16px; padding:16px; margin:14px 0 24px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.06);
+    }
+    .card h2{ margin:0 0 10px; font-size:1.05rem; letter-spacing:.3px; font-weight:800; color:#dff7e6; }
+
+    /* ================== Controles de filtros y botones ================== */
+    .controles{
+      display:flex; flex-wrap:wrap; align-items:center; gap:.5rem .6rem; margin-bottom:10px;
+      background: rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:12px; padding:10px;
+    }
+    .btn{
+      border:none; cursor:pointer; font-weight:800; letter-spacing:.2px; padding:.5rem .85rem; border-radius:999px; color:#07140c;
+      background: linear-gradient(135deg, var(--apple), var(--apple-2)); box-shadow: 0 10px 24px rgba(126,217,87,.25);
+    }
+    .btn:hover{ filter:brightness(1.05); }
+    .btn.cmp{ background: linear-gradient(135deg, #b3e59f, #7ed957); }
+    .btn.out{ background: linear-gradient(135deg, #ffe08a, #ffd166); color:#222; }
+    input[type="date"], input[type="time"], input[type="text"]{
+      background: rgba(255,255,255,.06); color:var(--txt); border:1px solid rgba(255,255,255,.15);
+      border-radius:10px; padding:.4rem .5rem; outline:0;
+    }
+
+    /* ================== Canvas (gráficos Chart.js) ================== */
+    canvas{
+      width:100% !important; max-height: 320px; aspect-ratio: 16 / 9; display:block;
+      background:
+        linear-gradient(180deg, rgba(126,217,87,.08), transparent 30%),
+        linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px);
+      background-size: 100% 100%, 44px 100%; border-radius: 12px;
+    }
+    .fecha{ text-align:center; margin-top:6px; font-size:.9rem; color:var(--muted); }
+
+    /* ================== Estado semáforo y tablas de rangos ================== */
+    .estado{ margin:10px 0 6px; font-weight:800; text-align:center; }
+    .estado.ok{ color:#29e07b; } .estado.warn{ color:#ffd166; } .estado.bad{ color:#ff7a7a; }
+
+    .rangos{
+      width:100%; border-collapse:collapse; font-size:.92rem; margin-top:10px;
+      border:1px solid rgba(255,255,255,.14); border-radius:10px; overflow:hidden;
+    }
+    .rangos th{ background: rgba(126,217,87,.16); color:#092012; }
+    .rangos th, .rangos td{ border:1px solid rgba(255,255,255,.12); padding:6px 8px; text-align:center; }
+
+    .ref{
+      display:inline-block; margin-top:8px; font-size:.87rem; color:#aef38e; text-decoration:underline dotted;
+    }
+
+    /* Intro (texto) */
+    .intro .card{ display:block; }
+    .intro h2{ font-size:1.2rem; }
+    .intro p, .intro li{ color:var(--muted); line-height:1.5; }
+  </style>
+</head>
+<body>
+
+<!-- ================== ENCABEZADO: logos, título y usuario ================== -->
+<header>
+  <img class="logo logo-left"  src="img/logo-izq.png" alt="Logo izquierdo" />
+  <div class="titulo">
+    <h1>Sistema IoT para el monitoreo de variables ambientales</h1>
+    <h1>Programa de Ingeniería de Telecomunicaciones – UTS</h1>
+  </div>
+  <div style="display:flex;align-items:center;gap:.6rem;">
+    <!-- auth.js llenará este span con el correo del usuario -->
+    <span id="userEmail" class="user"></span>
+    <!-- botón de cerrar sesión -->
+    <button id="logout" class="btn-logout" type="button">Salir</button>
+  </div>
+  <img class="logo logo-right" src="img/logo-der.png" alt="Logo derecho" />
+</header>
+
+  <!-- ================== Selector dinámico de dispositivos (boards) ================== -->
+  <div id="selBoards" class="selector-boards"></div>
+
+  <!-- ================== Pestañas de navegación ================== -->
+  <nav class="tabs">
+    <button class="tablink active" type="button" data-tab="intro">Presentación</button>
+    <button class="tablink" type="button" data-tab="temp">Temperatura</button>
+    <button class="tablink" type="button" data-tab="hum">Humedad</button>
+    <button class="tablink" type="button" data-tab="co2">CO₂</button>
+    <button class="tablink" type="button" data-tab="pm">Material particulado</button>
+    <!-- Esta pestaña se muestra sólo a ADMIN (auth.js la oculta/enseña) -->
+    <button class="tablink oculto" id="tabCfg" type="button" data-tab="cfg">Configuración</button>
+  </nav>
+
+  <!-- ================== TAB: Introducción / Descripción del proyecto ================== -->
+  <div class="tabcontent active" id="intro">
+    <div class="contenedor intro">
+      <div class="card">
+        <h2>Proyecto de monitoreo ambiental</h2>
+        <p>Este panel muestra lecturas de:</p>
+        <ul>
+          <li><strong>SCD40</strong> – Temperatura, humedad y CO₂.</li>
+          <li><strong>MPM10-AG</strong> – Concentración de particulas PM1.0, PM2.5 y PM10.</li>
+        </ul>
+        <p>Objetivo: vigilar condiciones de confort y calidad de aire en tiempo real,
+        almacenando los datos en Firebase, permitiendo consultas históricas con la posibilidad de descargar los datos en formato SCV.</p>
+         Proyecto realizado por el estudiante de Ingenieria de telecomunicaciones: Franz Hederich Amaya Rios
+      <br> 
+        Director de proyecto y lider del semillero de investigacion: Johan Leandro Téllez Garzón
+      <br>
+        Semillero de investigacion: SISTEL
+      <br>
+      <br>
+      <b>Vitrina de innovación: </b> <P>El proyecto integra sensores, conectividad y panel web; 
+        sirve como caso práctico para asignaturas de electrónica, programación Y desmas asignaturas 
+        de ingeniería .
+      </P>
+      <br>
+      <b>Base de investigación local</b> <p>Con series de 5 min se pueden comparar periodos, evaluar el impacto del tráfico cercano a la Universidad o de obras de infraestructura 
+        cercanas.
+      </p>
+      <br>
+      <b>Escalabilidad y replica</b> <p>Añadir nodos a otras zonas del campus (laboratorios, biblioteca) 
+        permitirá construir un mapa micro-climático y validar estrategias de confort pasivo.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== TAB: Temperatura ================== -->
+  <div class="tabcontent" id="temp">
+    <div class="contenedor">
+      <div class="card">
+        <h2>Temperatura (°C)</h2>
+
+        <!-- Controles: fecha/rango/promedios/comparación/fuera de rango y "En vivo" -->
+        <div class="controles" data-var="temp">
+          Día <input type="date" class="dia">
+          Día 2 <input type="date" class="dia2">
+          De <input type="time" class="ini" step="300"> a
+             <input type="time" class="fin" step="300">
+          <button class="btn rango" type="button">Rango</button>
+          <button class="btn prom"  type="button">Promedio</button>
+          <button class="btn mm"    type="button">Máx/Mín</button>
+          <button class="btn cmp"   type="button">Comparar días</button>
+          <button class="btn out"   type="button">Fuera de rango</button>
+          <button class="btn live" title="Limpiar filtros y volver al tiempo real">En vivo</button>
+        </div>
+
+        <!-- Gráfico + estado + tabla de rangos + fecha mostrada -->
+        <canvas id="graficoTemp"></canvas>
+        <p class="estado" id="estadoTemp"></p>
+
+        <table class="rangos">
+          <thead><tr><th>Rango</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Normal</td><td id="rNTemp"></td></tr>
+            <tr><td>Medio</td> <td id="rMTemp"></td></tr>
+            <tr><td>Alto</td>  <td id="rATemp"></td></tr>
+          </tbody>
+        </table>
+        <a class="ref" href="https://es.weatherspark.com/y/24381/Clima-promedio-en-Bucaramanga-Colombia-durante-todo-el-a%C3%B1o" target="_blank" rel="noopener">Referencia de confort térmico</a>
+        <div class="fecha" id="fechaTemp"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== TAB: Humedad ================== -->
+  <div class="tabcontent" id="hum">
+    <div class="contenedor">
+      <div class="card">
+        <h2>Humedad (%)</h2>
+
+        <div class="controles" data-var="hum">
+          Día <input type="date" class="dia">
+          Día 2 <input type="date" class="dia2">
+          De <input type="time" class="ini" step="300"> a
+             <input type="time" class="fin" step="300">
+          <button class="btn rango" type="button">Rango</button>
+          <button class="btn prom"  type="button">Promedio</button>
+          <button class="btn mm"    type="button">Máx/Mín</button>
+          <button class="btn cmp"   type="button">Comparar días</button>
+          <button class="btn out"   type="button">Fuera de rango</button>
+          <button class="btn live" title="Limpiar filtros y volver al tiempo real">En vivo</button>
+        </div>
+
+        <canvas id="graficoHum"></canvas>
+        <p class="estado" id="estadoHum"></p>
+
+        <table class="rangos">
+          <thead><tr><th>Rango</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Normal</td><td id="rNHum"></td></tr>
+            <tr><td>Medio</td> <td id="rMHum"></td></tr>
+            <tr><td>Alto</td>  <td id="rAHum"></td></tr>
+          </tbody>
+        </table>
+        <a class="ref" href="https://www.epa.gov/mold/brief-guide-mold-moisture-and-your-home#Humidity" target="_blank" rel="noopener">Recomendación RH interior (EPA)</a>
+        <div class="fecha" id="fechaHum"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== TAB: CO2 ================== -->
+  <div class="tabcontent" id="co2">
+    <div class="contenedor">
+      <div class="card">
+        <h2>CO₂ (ppm)</h2>
+
+        <div class="controles" data-var="co2">
+          Día <input type="date" class="dia">
+          Día 2 <input type="date" class="dia2">
+          De <input type="time" class="ini" step="300"> a
+             <input type="time" class="fin" step="300">
+          <button class="btn rango" type="button">Rango</button>
+          <button class="btn prom"  type="button">Promedio</button>
+          <button class="btn mm"    type="button">Máx/Mín</button>
+          <button class="btn cmp"   type="button">Comparar días</button>
+          <button class="btn out"   type="button">Fuera de rango</button>
+          <button class="btn live" title="Limpiar filtros y volver al tiempo real">En vivo</button>
+        </div>
+
+        <canvas id="graficoCO2"></canvas>
+        <p class="estado" id="estadoCO2"></p>
+
+        <table class="rangos">
+          <thead><tr><th>Rango</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Normal</td><td id="rNCo2"></td></tr>
+            <tr><td>Medio</td> <td id="rMCo2"></td></tr>
+            <tr><td>Alto</td>  <td id="rACo2"></td></tr>
+          </tbody>
+        </table>
+        <a class="ref" href="https://www.cdmb.gov.co/index.php/informes/informes-svca/isvca-2020/1179-informe-anual-de-2020-1-revisado-23-03-2020/file" target="_blank" rel="noopener">Nota técnica sobre CO₂ en Bucaramanga</a>
+        <div class="fecha" id="fechaCO2"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== TAB: Material particulado (PM1/PM2.5/PM10) ================== -->
+  <div class="tabcontent" id="pm">
+    <div class="contenedor">
+      <!-- ----- PM1.0 ----- -->
+      <div class="card">
+        <h2>PM1.0 (µg/m³)</h2>
+        <div class="controles" data-var="pm1">
+          Día <input type="date" class="dia">
+          Día 2 <input type="date" class="dia2">
+          De <input type="time" class="ini" step="300"> a
+             <input type="time" class="fin" step="300">
+          <button class="btn rango" type="button">Rango</button>
+          <button class="btn prom"  type="button">Promedio</button>
+          <button class="btn mm"    type="button">Máx/Mín</button>
+          <button class="btn cmp"   type="button">Comparar días</button>
+          <button class="btn out"   type="button">Fuera de rango</button>
+          <button class="btn live" title="Limpiar filtros y volver al tiempo real">En vivo</button>
+        </div>
+        <canvas id="graficoPM1"></canvas>
+        <p class="estado" id="estadoPM1"></p>
+        <table class="rangos">
+          <thead><tr><th>Rango</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Normal</td><td id="rNPm1"></td></tr>
+            <tr><td>Medio</td> <td id="rMPm1"></td></tr>
+            <tr><td>Alto</td>  <td id="rAPm1"></td></tr>
+          </tbody>
+        </table>
+        <a class="ref" href="https://www.aqi.in/es/dashboard/colombia/santander/bucaramanga" target="_blank" rel="noopener">Información oficial sobre material particulado</a>
+        <div class="fecha" id="fechaPM1"></div>
+      </div>
+
+      <!-- ----- PM2.5 ----- -->
+      <div class="card">
+        <h2>PM2.5 (µg/m³)</h2>
+        <div class="controles" data-var="pm25">
+          Día <input type="date" class="dia">
+          Día 2 <input type="date" class="dia2">
+          De <input type="time" class="ini" step="300"> a
+             <input type="time" class="fin" step="300">
+          <button class="btn rango" type="button">Rango</button>
+          <button class="btn prom"  type="button">Promedio</button>
+          <button class="btn mm"    type="button">Máx/Mín</button>
+          <button class="btn cmp"   type="button">Comparar días</button>
+          <button class="btn out"   type="button">Fuera de rango</button>
+        </div>
+        <canvas id="graficoPM25"></canvas>
+        <p class="estado" id="estadoPM25"></p>
+        <table class="rangos">
+          <thead><tr><th>Rango</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Normal</td><td id="rNPm25"></td></tr>
+            <tr><td>Medio</td> <td id="rMPm25"></td></tr>
+            <tr><td>Alto</td>  <td id="rAPm25"></td></tr>
+          </tbody>
+        </table>
+        <a class="ref" href="https://www.who.int/news-room/fact-sheets/detail/ambient-(outdoor)-air-quality-and-health" target="_blank" rel="noopener">Guía OMS – PM2.5/PM10</a>
+        <div class="fecha" id="fechaPM25"></div>
+      </div>
+
+      <!-- ----- PM10 ----- -->
+      <div class="card">
+        <h2>PM10 (µg/m³)</h2>
+        <div class="controles" data-var="pm10">
+          Día <input type="date" class="dia">
+          Día 2 <input type="date" class="dia2">
+          De <input type="time" class="ini" step="300"> a
+             <input type="time" class="fin" step="300">
+          <button class="btn rango" type="button">Rango</button>
+          <button class="btn prom"  type="button">Promedio</button>
+          <button class="btn mm"    type="button">Máx/Mín</button>
+          <button class="btn cmp"   type="button">Comparar días</button>
+          <button class="btn out"   type="button">Fuera de rango</button>
+          <button class="btn live" title="Limpiar filtros y volver al tiempo real">En vivo</button>
+        </div>
+        <canvas id="graficoPM10"></canvas>
+        <p class="estado" id="estadoPM10"></p>
+        <table class="rangos">
+          <thead><tr><th>Rango</th><th>Valor</th></tr></thead>
+          <tbody>
+            <tr><td>Normal</td><td id="rNPm10"></td></tr>
+            <tr><td>Medio</td> <td id="rMPm10"></td></tr>
+            <tr><td>Alto</td>  <td id="rAPm10"></td></tr>
+          </tbody>
+        </table>
+        <a class="ref" href="https://www.aqi.in/es/dashboard/colombia/santander/bucaramanga" target="_blank" rel="noopener">PM10 – fundamentos</a>
+        <div class="fecha" id="fechaPM10"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ================== TAB: Configuración (sólo admin) ================== -->
+  <div class="tabcontent" id="cfg">
+    <div class="contenedor">
+      <div class="card">
+        <h2>Opciones de configuración</h2>
+        <p style="color:var(--muted)">Esta pestaña sólo se muestra a usuarios con rol <em>admin</em>.</p>
+
+        <!-- ----- Gestión de dispositivos (boards) ----- -->
+        <div class="card" style="padding:12px;">
+          <h3 style="margin:0 0 10px;">Dispositivos registrados</h3>
+          <div id="listaBoards" class="lista-boards" style="margin-bottom:10px;"></div>
+
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            <input id="nuevoId" placeholder="Nuevo ID, ej. esp32-3"
+                   style="background:rgba(255,255,255,.06);color:var(--txt);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:.5rem .7rem;outline:0;">
+            <input id="pinCode" placeholder="PIN (5 min)"
+                   style="background:rgba(255,255,255,.06);color:var(--txt);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:.5rem .7rem;outline:0;" maxlength="6">
+            <button id="btnSendPin" class="btn out" type="button">Enviar PIN al correo</button>
+            <button id="btnAddBoard" class="btn" type="button">Agregar</button>
+            <p id="msgCfg" class="msg" style="margin:0;color:#ffd166;"></p>
+          </div>
+          <p id="pinInfo" style="margin:.5rem 0 0;color:var(--muted);font-size:.9rem;"></p>
+
+          <hr style="opacity:.2;margin:14px 0">
+
+          <!-- ----- Exportar datos del board seleccionado ----- -->
+          <h3 style="margin:0 0 10px;">Descargar datos</h3>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
+            <label>Desde <input id="expFrom" type="date"></label>
+            <label>Hasta <input id="expTo" type="date"></label>
+            <label>Formato
+              <!-- En tu proyecto dejaste sólo CSV (simple y robusto para Excel/LibreOffice) -->
+              <select id="expFmt" style="background:rgba(255,255,255,.06);color:var(--txt);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:.4rem .5rem;outline:0;">
+                <option value="csv">CSV</option>
+              </select>
+            </label>
+            <button id="btnExport" class="btn" type="button">Descargar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================== LIBRERÍAS (Chart.js + Firebase compat) ================== -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Firebase compat (se cargan con defer; auth.js/script.js dependen de estas) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js" defer></script>
+
+  <!-- XLSX + FileSaver para exportar (NOTA: sólo usas CSV ahora; estos scripts pueden sobrar) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" defer></script>
+
+  <!-- Lógica de autenticación y de panel -->
+  <script src="auth.js?v=20250924a" defer></script>
+  <!-- esta línea vuelve a cargar XLSX (duplicado). -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js" defer></script>
+  <script src="script.js?v=20250924a" defer></script>
+
+  <!-- Inicialización mínima de pestañas y auth (guardado de pestaña activa) -->
+  <script>
+    window.addEventListener('DOMContentLoaded', () => {
+      // Llama a authInit para proteger la ruta y mostrar correo/roles
+      if (typeof window.authInit === 'function') authInit();
+
+      // Guarda la pestaña activa en localStorage (restaura en script.js/tabLogic)
+      document.addEventListener('click', (e) => {
+        const btn = e.target.closest('.tablink');
+        if (btn && btn.dataset.tab) {
+          try { localStorage.setItem('activeTab', btn.dataset.tab); } catch {}
+        }
+      }, {passive:true});
+    });
+  </script>
+
+  <!-- ================== Footer con redes / contacto ================== -->
+  <footer class="site-footer">
+    <a class="ig" href="https://www.instagram.com/telecomunicacionesuts" target="_blank" rel="noopener">
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5zm0 2a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3V7a3 3 0 0 0-3-3H7zm5 3.8a5.2 5.2 0 1 1 0 10.4 5.2 5.2 0 0 1 0-10.4zm0 2a3.2 3.2 0 1 0 0 6.4 3.2 3.2 0 0 0 0-6.4zm5.6-.9a1.1 1.1 0 1 1 0 2.2 1.1 1.1 0 0 1 0-2.2z"/>
+      </svg>
+      <span>telecomunicacionesuts</span>
+    </a>
+    <span class="dot">·</span>
+    <span>Correo de contacto:
+      <a class="mail" href="mailto:proyectouts22@gmail.com">proyectouts22@gmail.com</a>
+    </span>
+  </footer>
+
+<!-- ================== (DUPLICADOS) Librerías para exportar ==================
+     Estas dos ya se incluyeron arriba. Las dejo intactas por fidelidad a tu archivo.
+     Si sólo exportas CSV con Blob, puedes quitar ambas sin problema. 
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js" defer></script>
+
+ ================== (DUPLICADOS) Tu lógica con bump de versión ==================
+     auth.js y script.js ya se cargaron arriba. Mantengo estas líneas tal cual. 
+<script src="auth.js?v=20250925a" defer></script>
+<script src="script.js?v=20250925c" defer></script>-->
+
+<!-- Librerías externas -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<!-- Solo CSV (dejamos FileSaver por si el navegador lo necesita) -->
+<script defer src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
+
+<!-- Tu lógica (una sola vez) -->
+<script defer src="auth.js?v=20250929a"></script>
+<script defer src="script.js?v=20250929a"></script>
+
+<script>
+  // Inicializa cuando todo esté listo
+  window.addEventListener('DOMContentLoaded', () => {
+    if (typeof window.authInit === 'function') authInit();
+
+    // Persistir pestaña activa
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('.tablink');
+      if (btn && btn.dataset.tab) {
+        try { localStorage.setItem('activeTab', btn.dataset.tab); } catch {}
+      }
+    }, { passive: true });
+  });
+</script>
+
+
+</body>
+</html>

@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"path": "C:/Users/franz amaya/Documents/Robotics-Backend"
+		},
+		{
+			"name": "SensorDHT11",
+			"path": "C:/Users/franz amaya/Documents/PlatformIO/Projects/SensorDHT11"
+		},
+		{
+			"name": "Proyecto",
+			"path": "."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "SensorDHT11"
+	}
+}
